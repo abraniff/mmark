@@ -786,6 +786,8 @@ func (options *html) LineBreak(out *bytes.Buffer) {
 }
 
 func (options *html) Link(out *bytes.Buffer, link []byte, title []byte, content []byte) {
+	ial := options.Attr()
+	s := options.AttrString(ial)
 	if options.flags&HTML_SKIP_LINKS != 0 {
 		// write the link text out but don't link it, just mark it with typewriter font
 		out.WriteString("<tt>")
