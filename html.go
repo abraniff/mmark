@@ -804,7 +804,7 @@ func (options *html) Link(out *bytes.Buffer, link []byte, title []byte, content 
 		return
 	}
 
-	out.WriteString("<a href=\"")
+	out.WriteString("<a "+ s +" href=\"")
 	options.maybeWriteAbsolutePrefix(out, link)
 	attrEscape(out, link)
 	if len(title) > 0 {
