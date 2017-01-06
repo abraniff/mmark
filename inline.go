@@ -29,6 +29,15 @@ func (p *parser) inline(out *bytes.Buffer, data []byte) {
 
 	i, end := 0, 0
 	for i < len(data) {
+		// IAL
+		//
+		// {.class #id key=value}
+		if data[0] == '{' {
+			if j := p.isInlineAttr(data); j > 0 {
+				data = data[j:]
+				continue
+			}
+		}
 		// copy inactive chars into the output
 		for end < len(data) && p.inlineCallback[data[end]] == nil {
 			end++
