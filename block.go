@@ -22,8 +22,36 @@ func (p *parser) block(out *bytes.Buffer, data []byte) {
 	}
 	p.nesting++
 
+	tabSize := _TAB_SIZE_DEFAULT
+
 	// parse out one block-level construct at a time
 	for len(data) > 0 {
+		// fmt.Println("Block data:", string(data))
+
+		// special links:
+		//
+		// {IAL}[display](href)
+		if p.flags&EXTENSION_LINK_IAL != 0 {
+			if end := isReference(p, data, tabSize, true); end > 0 {
+				link(p, out, data, 0)
+				data = data[end:]
+				continue
+			}
+		}
+
+		// an itemized/unordered list:
+		//
+		// * Item 1
+		// * Item 2
+		//
+		// also works with + or -
+		// also works with prefixed IAL
+		// {#ID .class key="value"}-|+|* List item
+		if p.uliPrefix(data) > 0 {
+			data = data[p.list(out, data, 0, 0, nil):]
+			continue
+		}
+
 		// IAL
 		//
 		// {.class #id key=value}
@@ -242,17 +270,6 @@ func (p *parser) block(out *bytes.Buffer, data []byte) {
 				data = data[p.list(out, data, _LIST_TYPE_DEFINITION, 0, nil):]
 				continue
 			}
-		}
-
-		// an itemized/unordered list:
-		//
-		// * Item 1
-		// * Item 2
-		//
-		// also works with + or -
-		if p.uliPrefix(data) > 0 {
-			data = data[p.list(out, data, 0, 0, nil):]
-			continue
 		}
 
 		// a numbered/ordered list:
@@ -1854,7 +1871,7 @@ func (p *parser) uliPrefix(data []byte) int {
 	}
 
 	// start with up to 3 spaces
-	for i < 3 && data[i] == ' ' {
+	for i < 3 && (data[i] == ' ' || data[i] == '\n' || data[i] == '\r') {
 		i++
 	}
 	// need a *, +, or - followed by a space
@@ -2138,6 +2155,14 @@ func (p *parser) listItem(out *bytes.Buffer, data []byte, flags *int) int {
 	// find the end of the line
 	line := i
 	for i > 0 && data[i-1] != '\n' {
+		if data[i] == '{' {
+			if j := p.isInlineAttr(data[i:]); j > 0 {
+				data = append(data[:i-1], data[j+1:]...)
+
+				p.r.SetAttr(p.ial)
+				p.ial = nil
+			}
+		}
 		i++
 	}
 

@@ -587,6 +587,8 @@ func (options *html) List(out *bytes.Buffer, text func() bool, flags, start int,
 }
 
 func (options *html) ListItem(out *bytes.Buffer, text []byte, flags int) {
+	ial := options.Attr()
+	s := options.AttrString(ial)
 	if flags&_LIST_ITEM_CONTAINS_BLOCK != 0 || flags&_LIST_ITEM_BEGINNING_OF_LIST != 0 {
 		doubleSpace(out)
 	}
@@ -610,7 +612,7 @@ func (options *html) ListItem(out *bytes.Buffer, text []byte, flags int) {
 		text = append([]byte(`<input type="checkbox" checked="" disabled="">`), text[3:]...)
 	}
 
-	out.WriteString("<li>")
+	out.WriteString("<li " + s + ">")
 	out.Write(text)
 	out.WriteString("</li>\n")
 }
@@ -788,9 +790,6 @@ func (options *html) LineBreak(out *bytes.Buffer) {
 func (options *html) Link(out *bytes.Buffer, link []byte, title []byte, content []byte) {
 	ial := options.Attr()
 	s := options.AttrString(ial)
-	for i := range ial.class {
-		fmt.Println("Attr4link:", ial.class[i])
-	}
 	if options.flags&HTML_SKIP_LINKS != 0 {
 		// write the link text out but don't link it, just mark it with typewriter font
 		out.WriteString("<tt>")

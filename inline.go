@@ -4,6 +4,7 @@ package mmark
 
 import (
 	"bytes"
+	"fmt"
 	"regexp"
 	"strconv"
 	"unicode/utf8"
@@ -25,16 +26,22 @@ func (p *parser) inline(out *bytes.Buffer, data []byte) {
 	if p.nesting >= p.maxNesting {
 		return
 	}
+
+	// fmt.Println("Pre:", string(data))
+
 	p.nesting++
 
 	i, end := 0, 0
 	for i < len(data) {
+		// fmt.Println("During:", len(data), "-", string(data))
 		// IAL
 		//
 		// {.class #id key=value}
 		if data[0] == '{' {
 			if j := p.isInlineAttr(data); j > 0 {
 				data = data[j:]
+				p.r.SetAttr(p.ial)
+				p.ial = nil
 				continue
 			}
 		}
@@ -259,6 +266,7 @@ func link(p *parser, out *bytes.Buffer, data []byte, offset int) int {
 	if p.insideLink && (offset > 0 && data[offset-1] == '[' || len(data)-1 > offset && data[offset+1] == '^') {
 		return 0
 	}
+	fmt.Println("Link:", string(data))
 
 	// [text] == regular link
 	// ![alt] == image

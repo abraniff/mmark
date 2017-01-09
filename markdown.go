@@ -4,6 +4,7 @@ package mmark
 
 import (
 	"bytes"
+	"fmt"
 	"path"
 	"unicode/utf8"
 )
@@ -41,6 +42,7 @@ const (
 	EXTENSION_BACKSLASH_LINE_BREAK       // Translate trailing backslashes into line breaks
 	EXTENSION_RFC7328                    // Parse RFC 7328 markdown. Depends on FOOTNOTES extension.
 	EXTENSION_DEFINITION_LISTS           // render definition lists
+	EXTENSION_LINK_IAL                   // allow IAL on links
 
 	commonHtmlFlags = 0 |
 		HTML_USE_SMARTYPANTS |
@@ -403,13 +405,14 @@ func firstPass(p *parser, input []byte, depth int) *bytes.Buffer {
 		out.WriteByte('\n')
 		return &out
 	}
+	fmt.Println("FirstPass input:", string(input))
 
 	tabSize := _TAB_SIZE_DEFAULT
 	beg, end := 0, 0
 	lastFencedCodeBlockEnd := 0
 	for beg < len(input) { // iterate over lines
 		if beg >= lastFencedCodeBlockEnd { // don't parse inside fenced code blocks
-			if end = isReference(p, input[beg:], tabSize); end > 0 {
+			if end = isReference(p, input[beg:], tabSize, false); end > 0 {
 				beg += end
 				continue
 			}
@@ -470,6 +473,7 @@ func secondPass(p *parser, input []byte, depth int) *bytes.Buffer {
 
 	p.r.DocumentHeader(&output, depth == 0)
 	p.headerLen = output.Len()
+	fmt.Println("SecondPass input:", string(input))
 	p.block(&output, input)
 
 	if p.flags&EXTENSION_FOOTNOTES != 0 && len(p.notes) > 0 {
@@ -504,6 +508,7 @@ func secondPass(p *parser, input []byte, depth int) *bytes.Buffer {
 	if p.nesting != 0 {
 		panic("Nesting level did not end at zero")
 	}
+	fmt.Println("SecondPass output:", output.String())
 
 	return &output
 }
@@ -564,14 +569,25 @@ type citation struct {
 // (in the render struct).
 // Returns the number of bytes to skip to move past it,
 // or zero if the first line is not a reference.
-func isReference(p *parser, data []byte, tabSize int) int {
+func isReference(p *parser, data []byte, tabSize int, isBlock bool) int {
 	// up to 3 optional leading spaces
 	if len(data) < 4 {
 		return 0
 	}
 	i := 0
-	for i < 3 && data[i] == ' ' {
+	for i < 3 && (data[i] == ' ' || data[i] == '\n' || data[i] == '\r') {
 		i++
+	}
+
+	if data[i] == '{' && isBlock {
+		if j := p.isInlineAttr(data); j > 0 {
+			fmt.Println("isRef IAL:", string(data[:j]))
+			data = data[j:]
+			fmt.Println("isRef postIAL:", string(data))
+			p.r.SetAttr(p.ial)
+			p.ial = nil
+			i = j + 1
+		}
 	}
 
 	noteId := 0
